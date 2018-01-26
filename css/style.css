@@ -1,0 +1,10 @@
+body {
+	background-color: black;
+	padding: 0px;
+	margin: 0px;
+	overflow: hidden;
+}
+
+canvas {
+	z-index:10;
+}
