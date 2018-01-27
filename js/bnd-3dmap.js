@@ -46,55 +46,55 @@ function getRandomHeightData(size, scale) {
 
 
 function init( ) {
-	var width = window.innerWidth;
-	var height = window.innerHeight;
-	var aspect = width/height;
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var aspect = width/height;
 
-	scene = new THREE.Scene( );
-	scene.background = new THREE.Color( 0, 0, 0, 0 );
-	scene.fog = new THREE.Fog( scene.background, 1, 5000 );
+    scene = new THREE.Scene( );
+    scene.background = new THREE.Color( 0, 0, 0, 0 );
+    scene.fog = new THREE.Fog( scene.background, 1, 5000 );
 
-	camera = new THREE.PerspectiveCamera( 75, aspect, 0.1, 5000 );
-	scene.add( camera );
+    camera = new THREE.PerspectiveCamera( 75, aspect, 0.1, 5000 );
+    scene.add( camera );
 
-	if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-	renderer = Detector.webgl ? ( new THREE.WebGLRenderer( { antialias: true } ) ) : ( new THREE.CanvasRenderer( ) );
-	renderer.setSize( width, height );
-	renderer.gammaInput = true;
-	renderer.gammaOutput = true;
-	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.renderReverseSided = false;
+    if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+    renderer = Detector.webgl ? ( new THREE.WebGLRenderer( { antialias: true } ) ) : ( new THREE.CanvasRenderer( ) );
+    renderer.setSize( width, height );
+    renderer.gammaInput = true;
+    renderer.gammaOutput = true;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.renderReverseSided = false;
 
-	document.body.appendChild( renderer.domElement );
+    document.body.appendChild( renderer.domElement );
 
-	camera.position.z = 175;
+    camera.position.z = 175;
 
-	clock = new THREE.Clock();
+    clock = new THREE.Clock();
 
-	// Setup the orbit controls.
-	controls = new THREE.OrbitControls( camera, renderer.domElement );
-	controls.target.set( 0, 0, 0 );
-	controls.update( );
+    // Setup the orbit controls.
+    controls = new THREE.OrbitControls( camera, renderer.domElement );
+    controls.target.set( 0, 0, 0 );
+    controls.update( );
 
-	// Setup a resize listener.
-	window.addEventListener( 'resize', onWindowResize, false );
+    // Setup a resize listener.
+    window.addEventListener( 'resize', onWindowResize, false );
 
-	setupScene( );
+    setupScene( );
 }
 
 function setupScene( )
 {
 
-	// light
-	hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.8 );
-	hemiLight.color.setHSL( 0.6, 1, 0.6 );
-	hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
-	hemiLight.position.set( 0, 50, 0 );
-	hemiLight.visible = true;
-	scene.add( hemiLight );
+    // light
+    hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.8 );
+    hemiLight.color.setHSL( 0.6, 1, 0.6 );
+    hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+    hemiLight.position.set( 0, 50, 0 );
+    hemiLight.visible = true;
+    scene.add( hemiLight );
 
-	hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
-	scene.add( hemiLightHelper );
+    hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
+    scene.add( hemiLightHelper );
 
     // terrain
     var map = new Image();
@@ -129,60 +129,60 @@ function setupScene( )
     // load map source
     map.src = 'assets/map_tilecolors.png';
 
-	// Setup shaders.
-	var vertexShader = document.getElementById( 'vertexShader' ).textContent;
-	var fragmentShader = document.getElementById( 'fragmentShader' ).textContent;
-	var uniforms = {
-		topColor:    { value: new THREE.Color( 0x0077ff ) },
-		bottomColor: { value: new THREE.Color( 0xffffff ) },
-		offset:      { value: 33 },
-		exponent:    { value: 0.6 }
-	};
-	uniforms.topColor.value.copy( hemiLight.color );
-	scene.fog.color.copy( uniforms.bottomColor.value );
+    // Setup shaders.
+    var vertexShader = document.getElementById( 'vertexShader' ).textContent;
+    var fragmentShader = document.getElementById( 'fragmentShader' ).textContent;
+    var uniforms = {
+        topColor:    { value: new THREE.Color( 0x0077ff ) },
+        bottomColor: { value: new THREE.Color( 0xffffff ) },
+        offset:      { value: 33 },
+        exponent:    { value: 0.6 }
+    };
+    uniforms.topColor.value.copy( hemiLight.color );
+    scene.fog.color.copy( uniforms.bottomColor.value );
 
-	// sky
-	var vertexShader = document.getElementById( 'vertexShader' ).textContent;
-	var fragmentShader = document.getElementById( 'fragmentShader' ).textContent;
-	var uniforms = {
-		topColor:    { value: new THREE.Color( 0x0077ff ) },
-		bottomColor: { value: new THREE.Color( 0xffffff ) },
-		offset:      { value: 33 },
-		exponent:    { value: 0.6 }
-	};
-	uniforms.topColor.value.copy( hemiLight.color );
-	scene.fog.color.copy( uniforms.bottomColor.value );
+    // sky
+    var vertexShader = document.getElementById( 'vertexShader' ).textContent;
+    var fragmentShader = document.getElementById( 'fragmentShader' ).textContent;
+    var uniforms = {
+        topColor:    { value: new THREE.Color( 0x0077ff ) },
+        bottomColor: { value: new THREE.Color( 0xffffff ) },
+        offset:      { value: 33 },
+        exponent:    { value: 0.6 }
+    };
+    uniforms.topColor.value.copy( hemiLight.color );
+    scene.fog.color.copy( uniforms.bottomColor.value );
 
-	var skyGeo = new THREE.SphereGeometry( 4000, 32, 15 );
-	var skyMat = new THREE.ShaderMaterial( { vertexShader: vertexShader, fragmentShader: fragmentShader, uniforms: uniforms, side: THREE.BackSide } );
+    var skyGeo = new THREE.SphereGeometry( 4000, 32, 15 );
+    var skyMat = new THREE.ShaderMaterial( { vertexShader: vertexShader, fragmentShader: fragmentShader, uniforms: uniforms, side: THREE.BackSide } );
 
-	var sky = new THREE.Mesh( skyGeo, skyMat );
-	scene.add( sky );
+    var sky = new THREE.Mesh( skyGeo, skyMat );
+    scene.add( sky );
 }
 
 function onWindowResize( )
 {
-	var width = window.innerWidth;
-	var height = window.innerHeight;
-	camera.aspect = width/height;
-	camera.updateProjectionMatrix( );
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    camera.aspect = width/height;
+    camera.updateProjectionMatrix( );
 
-	renderer.setSize( width, height );
+    renderer.setSize( width, height );
 }
 
 function render( )
 {
-	var delta = clock.getDelta();
-	var elapsed = clock.elapsedTime;
+    var delta = clock.getDelta();
+    var elapsed = clock.elapsedTime;
 
-	//camera.lookAt(...);
+    //camera.lookAt(...);
 
-  renderer.render( scene, camera );
+    renderer.render( scene, camera );
 }
 
 function update() {
-	requestAnimationFrame( update );
-	render();
+    requestAnimationFrame( update );
+    render();
 }
 
 init();
