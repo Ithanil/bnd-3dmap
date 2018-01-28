@@ -3,7 +3,7 @@ var clock;
 
 var hemiLight, hemiLightHelper;
 
-var plane;
+var plane, map, hmap;
 
 //return array with height data from img
 function getHeightData(img,scale) {
@@ -21,21 +21,24 @@ function getHeightData(img,scale) {
     context.drawImage(img,0,0);
 
     for ( var i = 0; i < size; i ++ ) {
-        data[i] = 0
+        data[i] = 0;
     }
 
-    console.log("img.width: " + img.width);
+    console.log("img.width: " + img.width + " img.height: " + img.height);
     var imgd = context.getImageData(0, 0, img.width, img.height);
     var pix = imgd.data;
+    console.log("size: " + size + " pix.length: " + pix.length);
 
-    var j=0;
+    var j = 0;
     for (var i = 0; i<pix.length; i +=4) {
-        data[j++] = pix[0]/scale;
+        data[j++] = pix[i]*scale;
+        //console.log(pix[i] + " " + pix[i+1] + " " + pix[i+2] + " " + pix[i+3]);
     }
 
     return data;
 }
 
+// return array with random height data
 function getRandomHeightData(size, scale) {
     var data = new Float32Array( size );
     for (var i = 0; i<size; i++) {
@@ -44,6 +47,53 @@ function getRandomHeightData(size, scale) {
     return data;
 }
 
+function onloadMap(map, loaded, url, plane){
+    // load map to plane
+
+    var texture = THREE.ImageUtils.loadTexture(url);
+    texture.generateMipmaps = false;
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.minFilter = THREE.LinearFilter;
+
+    plane.geometry = new THREE.PlaneGeometry(map.width, map.height);
+    plane.material = new THREE.MeshBasicMaterial( { map: texture } );
+}
+
+function onloadHeightMap(hmap, loaded, url, plane){
+    var size = hmap.width*hmap.height;
+    var data = getHeightData(hmap,1);
+
+    //set height of vertices
+    for ( var i = 0; i<plane.geometry.vertices.length; i++ ) {
+        plane.geometry.vertices[i].z = data[i];
+    }
+}
+
+function loadMap(url, onload, plane){
+
+    var newmap = new Image();
+    newmap.src = url;
+
+    if (newmap.complete) { // If the map has been cached
+        onload(newmap, true, url, plane);
+    } else {
+        newmap.onerror = function() {
+            onload(newmap, false, url, plane);
+        };
+        newmap.onload = function() {
+            onload(newmap, true, url, plane);
+            newmap.onload = null;
+        };
+    }
+    return newmap;
+}
+
+var myVar = setInterval(function(){
+    if( map.complete ) {
+        hmap=loadMap('assets/map_height.png', onloadHeightMap, plane);
+        clearInterval(myVar);
+    }
+}, 500);
 
 function init( ) {
     var width = window.innerWidth;
@@ -96,38 +146,12 @@ function setupScene( )
     hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
     scene.add( hemiLightHelper );
 
-    // terrain
-    var map = new Image();
-    map.onload = function () {
+    //create map plane
+    plane = new THREE.Mesh( );
+    scene.add(plane);
 
-        //get height data from map
-        //var hmap = new Image();
-        //hmap.src = "assets/map_height.png";
-        var width = 4096;
-        var height = 8192;
-        var size = width*height;
-        var data = getRandomHeightData(size, 500);
-
-        // plane
-        var geometry = new THREE.PlaneGeometry(4096,8192);
-        THREE.ImageUtils.crossOrigin = 'docs.google.com';
-        var texture = THREE.ImageUtils.loadTexture( 'assets/map_tilecolors.png' );
-        texture.generateMipmaps = false;
-        texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
-        texture.minFilter = THREE.LinearFilter;
-        var material = new THREE.MeshBasicMaterial( { map: texture } );
-        plane = new THREE.Mesh( geometry, material );
-
-        //set height of vertices
-        for ( var i = 0; i<plane.geometry.vertices.length; i++ ) {
-            plane.geometry.vertices[i].z = data[i];
-        }
-
-        scene.add(plane);
-
-    };
-    // load map source
-    map.src = 'assets/map_tilecolors.png';
+    // load maps
+    map = loadMap('assets/map_tilecolors.png', onloadMap, plane);
 
     // Setup shaders.
     var vertexShader = document.getElementById( 'vertexShader' ).textContent;
