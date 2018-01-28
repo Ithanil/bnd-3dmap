@@ -35,6 +35,9 @@ function getHeightData(img,scale) {
         //console.log(pix[i] + " " + pix[i+1] + " " + pix[i+2] + " " + pix[i+3]);
     }
 
+    //because current height map asset is "empty"
+    data = getRandomHeightData(size, 20);
+
     return data;
 }
 
@@ -47,7 +50,7 @@ function getRandomHeightData(size, scale) {
     return data;
 }
 
-function onloadMap(map, loaded, url, plane){
+function onloadMap(map, url, plane){
     // load map to plane
 
     var texture = THREE.ImageUtils.loadTexture(url);
@@ -55,14 +58,16 @@ function onloadMap(map, loaded, url, plane){
     texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.minFilter = THREE.LinearFilter;
 
-    plane.geometry = new THREE.PlaneGeometry(map.width, map.height);
+    plane.geometry = new THREE.PlaneGeometry(map.width, map.height, 0.1*map.width-1, 0.1*map.height-1);
     plane.material = new THREE.MeshBasicMaterial( { map: texture } );
+
 }
 
-function onloadHeightMap(hmap, loaded, url, plane){
+function onloadHeightMap(hmap, url, plane){
     var size = hmap.width*hmap.height;
     var data = getHeightData(hmap,1);
 
+    console.log("size: " + size + " #vertices: " + plane.geometry.vertices.length);
     //set height of vertices
     for ( var i = 0; i<plane.geometry.vertices.length; i++ ) {
         plane.geometry.vertices[i].z = data[i];
@@ -75,25 +80,18 @@ function loadMap(url, onload, plane){
     newmap.src = url;
 
     if (newmap.complete) { // If the map has been cached
-        onload(newmap, true, url, plane);
+        onload(newmap, url, plane);
     } else {
         newmap.onerror = function() {
-            onload(newmap, false, url, plane);
+            console.log("Error while loading map.");
         };
         newmap.onload = function() {
-            onload(newmap, true, url, plane);
+            onload(newmap, url, plane);
             newmap.onload = null;
         };
     }
     return newmap;
 }
-
-var myVar = setInterval(function(){
-    if( map.complete ) {
-        hmap=loadMap('assets/map_height.png', onloadHeightMap, plane);
-        clearInterval(myVar);
-    }
-}, 500);
 
 function init( ) {
     var width = window.innerWidth;
@@ -146,12 +144,22 @@ function setupScene( )
     hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
     scene.add( hemiLightHelper );
 
-    //create map plane
-    plane = new THREE.Mesh( );
-    scene.add(plane);
-
-    // load maps
+    // load map and create plane
+    plane = new THREE.Mesh();
     map = loadMap('assets/map_tilecolors.png', onloadMap, plane);
+    var hmapInt = setInterval(function(){ //loads height map after map is loaded
+        if (map!=undefined) if(map.complete) {
+            hmap=loadMap('assets/map_height.png', onloadHeightMap, plane);
+            clearInterval(hmapInt);
+        }
+    }, 500);
+
+    var planeInt = setInterval(function(){ //add plane to scene after hmap is loaded
+        if (hmap!=undefined) if(hmap.complete) {
+            scene.add(plane);
+            clearInterval(planeInt);
+        }
+    }, 500);
 
     // Setup shaders.
     var vertexShader = document.getElementById( 'vertexShader' ).textContent;
