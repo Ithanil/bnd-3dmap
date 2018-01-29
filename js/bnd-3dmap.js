@@ -5,38 +5,61 @@ var hemiLight, hemiLightHelper;
 
 var plane, map, hmap;
 
-//return array with height data from img
-function getHeightData(img,scale) {
+var height_scale = 10;
+var nvert_scale = 5;
 
-    if (scale == undefined) scale=1;
+//return array with height data from img
+function getHeightData(img, vsize, hscale) {
+
+    var width = img.width;
+    var height = img.height;
+    var size = width * height;
+    if (vsize == undefined) vsize=size;
+    if (hscale == undefined) hscale=1;
+    var nvscale = Math.floor(Math.sqrt(size/vsize));
+    var vwidth = Math.floor(width/nvscale);
+    var vheight = Math.floor(height/nvscale);
 
     var canvas = document.createElement( 'canvas' );
-    canvas.width = img.width;
-    canvas.height = img.height;
+    canvas.width = width;
+    canvas.height = height;
     var context = canvas.getContext( '2d' );
-
-    var size = img.width * img.height;
-    var data = new Float32Array( size );
-
     context.drawImage(img,0,0);
 
-    for ( var i = 0; i < size; i ++ ) {
+    var imgd = context.getImageData(0, 0, width, height);
+    var pix = imgd.data;
+
+    var data = new Float32Array( vsize );
+    for ( var i = 0; i < vsize; i ++ ) {
         data[i] = 0;
     }
 
-    console.log("img.width: " + img.width + " img.height: " + img.height);
-    var imgd = context.getImageData(0, 0, img.width, img.height);
-    var pix = imgd.data;
+    console.log("img.width: " + width + " img.height: " + height);
     console.log("size: " + size + " pix.length: " + pix.length);
+    console.log("hscale: " + hscale + " nvscale: " + nvscale);
 
-    var j = 0;
-    for (var i = 0; i<pix.length; i +=4) {
-        data[j++] = pix[i]*scale;
-        //console.log(pix[i] + " " + pix[i+1] + " " + pix[i+2] + " " + pix[i+3]);
+    var x,y;
+    for (var j = 0; j<pix.length; j+=4) {
+        var k = j/4;
+        x = k%width;
+        y = Math.floor(k/width);
+        k = Math.floor(x/nvscale) + Math.floor(y/nvscale)*vwidth;
+        data[k] += pix[j];
+    }
+
+    var hsum = 0;
+    var scale2 = nvscale*nvscale/hscale;
+    for ( var i = 0; i < vsize; i ++ ) {
+        data[i] /= scale2;
+        hsum += data[i];
+    }
+    hsum /= vsize;
+    for ( var i = 0; i < vsize; i ++ ) {
+        data[i] -= hsum;
     }
 
     //because current height map asset is "empty"
-    data = getRandomHeightData(size, 20);
+//    data = getRandomHeightData(size, 20);
 
     return data;
 }
@@ -50,43 +73,44 @@ function getRandomHeightData(size, scale) {
     return data;
 }
 
-function onloadMap(map, url, plane){
-    // load map to plane
-
+// load color map to plane
+function onloadMap(map, url, plane, nvscale){
     var texture = THREE.ImageUtils.loadTexture(url);
     texture.generateMipmaps = false;
     texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.minFilter = THREE.LinearFilter;
 
-    plane.geometry = new THREE.PlaneGeometry(map.width, map.height, 0.1*map.width-1, 0.1*map.height-1);
+    plane.geometry = new THREE.PlaneGeometry(map.width, map.height, map.width/nvscale-1, map.height/nvscale-1);
     plane.material = new THREE.MeshBasicMaterial( { map: texture } );
-
 }
 
-function onloadHeightMap(hmap, url, plane){
+// load and apply height map to vertices
+function onloadHeightMap(hmap, url, plane, hscale){
     var size = hmap.width*hmap.height;
-    var data = getHeightData(hmap,1);
+    var vsize = plane.geometry.vertices.length;
+    var data = getHeightData(hmap, vsize, hscale);
 
-    console.log("size: " + size + " #vertices: " + plane.geometry.vertices.length);
+    console.log("size: " + size + " #vertices: " + vsize);
     //set height of vertices
-    for ( var i = 0; i<plane.geometry.vertices.length; i++ ) {
+    var z;
+    for ( var i = 0; i<vsize; i++ ) {
         plane.geometry.vertices[i].z = data[i];
     }
 }
 
-function loadMap(url, onload, plane){
+function loadMap(url, onload, plane, scale){
 
     var newmap = new Image();
     newmap.src = url;
 
     if (newmap.complete) { // If the map has been cached
-        onload(newmap, url, plane);
+        onload(newmap, url, plane, scale);
     } else {
         newmap.onerror = function() {
             console.log("Error while loading map.");
         };
         newmap.onload = function() {
-            onload(newmap, url, plane);
+            onload(newmap, url, plane, scale);
             newmap.onload = null;
         };
     }
@@ -115,7 +139,7 @@ function init( ) {
 
     document.body.appendChild( renderer.domElement );
 
-    camera.position.z = 175;
+    camera.position.z = 1000;
 
     clock = new THREE.Clock();
 
@@ -146,10 +170,10 @@ function setupScene( )
 
     // load map and create plane
     plane = new THREE.Mesh();
-    map = loadMap('assets/map_tilecolors.png', onloadMap, plane);
+    map = loadMap('assets/map_tilecolors.png', onloadMap, plane, nvert_scale);
     var hmapInt = setInterval(function(){ //loads height map after map is loaded
         if (map!=undefined) if(map.complete) {
-            hmap=loadMap('assets/map_height.png', onloadHeightMap, plane);
+            hmap=loadMap('assets/map_height.png', onloadHeightMap, plane, height_scale);
             clearInterval(hmapInt);
         }
     }, 500);
